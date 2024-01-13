@@ -12,12 +12,18 @@ using System.Windows.Media;
 
 namespace WPF.SkinDiseaseDevice.Model
 {
-    public class CameraModel
+    public class CameraModel : IDisposable
     {
         private VideoCaptureDevice videoSource;
         private Bitmap currentFrame;
+        private readonly object frameLock = new object();
 
         public event EventHandler<byte[]> FrameCaptured;
+
+        public CameraModel()
+        {
+
+        }
 
         public void StartCamera()
         {
@@ -27,7 +33,7 @@ namespace WPF.SkinDiseaseDevice.Model
 
                 if (videoDevices.Count > 0)
                 {
-                    videoSource = new VideoCaptureDevice(videoDevices[0].MonikerString);
+                    videoSource = new VideoCaptureDevice(videoDevices[1].MonikerString);
                     videoSource.NewFrame += VideoSource_NewFrame;
                     videoSource.Start();
                 }
@@ -49,11 +55,12 @@ namespace WPF.SkinDiseaseDevice.Model
             {
                 using (System.Drawing.Bitmap bitmap = (System.Drawing.Bitmap)eventArgs.Frame.Clone())
                 {
-                    // Dispose of the currentFrame if it's not null
-                    currentFrame?.Dispose();
-
-                    // Set the currentFrame to the new frame
-                    currentFrame = bitmap;
+                    // Use a lock to ensure thread safety when updating currentFrame
+                    lock (frameLock)
+                    {
+                        currentFrame?.Dispose();
+                        currentFrame = new System.Drawing.Bitmap(bitmap);
+                    }
 
                     // Notify subscribers that a new frame is captured
                     await Task.Run(() => FrameCaptured?.Invoke(this, ConvertBitmapToByteArray(currentFrame)));
@@ -67,6 +74,7 @@ namespace WPF.SkinDiseaseDevice.Model
 
 
 
+
         public void StopCamera()
         {
             videoSource?.SignalToStop();
@@ -77,15 +85,21 @@ namespace WPF.SkinDiseaseDevice.Model
         {
             try
             {
-                if (currentFrame != null)
+                Bitmap localFrame;
+
+                // Use a lock to ensure thread safety when accessing currentFrame
+                lock (frameLock)
+                {
+                    localFrame = currentFrame; // Store a reference to currentFrame
+                }
+
+                if (localFrame != null)
                 {
                     // Check if cancellation is requested before capturing the image
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Simulate capturing image data (replace this with your actual capture logic)
-                    await Task.Delay(1000); // Replace with your capture logic
-
-                    return ConvertBitmapToByteArray(currentFrame);
+                    // Directly return the localFrame without additional processing
+                    return ConvertBitmapToByteArray(localFrame);
                 }
                 else
                 {
@@ -106,6 +120,9 @@ namespace WPF.SkinDiseaseDevice.Model
         }
 
 
+
+
+
         private byte[] ConvertBitmapToByteArray(System.Drawing.Bitmap bitmap)
         {
             try
@@ -124,6 +141,16 @@ namespace WPF.SkinDiseaseDevice.Model
             }
         }
 
+        public void Dispose()
+        {
+            lock (frameLock)
+            {
+                currentFrame?.Dispose();
+            }
+
+            videoSource?.SignalToStop();
+            videoSource?.WaitForStop();
+        }
 
     }
 }

@@ -19,9 +19,11 @@ namespace WPF.SkinDiseaseDevice.View
     /// </summary>
     public partial class SkinScannerView : Window
     {
+
         public SkinScannerView()
         {
             InitializeComponent();
         }
+
     }
 }

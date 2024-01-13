@@ -13,7 +13,7 @@ using WPF.SkinDiseaseDevice.ViewModel.Command;
 
 namespace WPF.SkinDiseaseDevice.ViewModel
 {
-    public class SkinScannerVM : INotifyPropertyChanged
+    public class SkinScannerVM : INotifyPropertyChanged, IDisposable
     {
         private readonly CameraModel cameraModel;
         public CaptureImageCommand CaptureImageCommand { get; set; }
@@ -55,35 +55,37 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             }
         }
 
-        private async void OnFrameCaptured(object sender, byte[] frameData)
+        private void OnFrameCaptured(object sender, byte[] frameData)
         {
             if (System.Windows.Application.Current != null)
             {
-                try
+                Task.Run(() =>
                 {
-                    // Use Task.Run to offload the work to a background thread
-                    await Task.Run(() =>
+                    if (cancellationTokenSource.Token.IsCancellationRequested)
                     {
-                        if (cancellationTokenSource.Token.IsCancellationRequested)
-                        {
-                            Console.WriteLine("Frame capture operation was canceled.");
-                            return;
-                        }
+                        Console.WriteLine("Frame capture operation was canceled.");
+                        return;
+                    }
 
-                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        try
                         {
                             ImageSource = ConvertToBitmapImage(frameData);
-                        });
-                    }, cancellationTokenSource.Token);
-                }
-                catch (TaskCanceledException)
+                        }
+                        catch (ArgumentException ex)
+                        {
+                            Console.WriteLine($"Error creating BitmapImage: {ex.Message}");
+                        }
+                    });
+                }, cancellationTokenSource.Token)
+                .ContinueWith(task =>
                 {
-                    Console.WriteLine("Frame capture operation was canceled.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error capturing frame: {ex.Message}");
-                }
+                    if (task.Exception != null)
+                    {
+                        Console.WriteLine($"Error capturing frame: {task.Exception.InnerException?.Message}");
+                    }
+                }, TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
@@ -135,19 +137,22 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         {
             try
             {
-                // Use CancellationTokenSource to create a cancellation token
                 using (var cts = new CancellationTokenSource())
                 {
-                    // Set a timeout for the operation (adjust the timeout value as needed)
                     int timeoutMilliseconds = 5000; // 5 seconds
                     cts.CancelAfter(timeoutMilliseconds);
 
-                    // Pass the cancellation token to CaptureImage method
-                    byte[] imageData = await Task.Run(() => cameraModel.CaptureImage(cts.Token));
+                    byte[] imageData = await cameraModel.CaptureImage(cts.Token).ConfigureAwait(true);
 
                     if (imageData != null)
                     {
                         string imagesFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images");
+
+                        if (!Directory.Exists(imagesFolderPath))
+                        {
+                            Directory.CreateDirectory(imagesFolderPath);
+                        }
+
                         string savePath = $"{imagesFolderPath}\\{DateTime.Now:yyyyMMddHHmmssfff}.jpg";
                         await SaveImageAsync(imageData, savePath);
                         GetAllImageInFolder();
@@ -158,11 +163,18 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Capture operation was canceled due to timeout.");
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error capturing image: {ex.Message}");
+                // Log the exception details or handle it accordingly
             }
         }
+
+
 
 
         private async Task SaveImageAsync(byte[] imageData, string filePath)
@@ -211,6 +223,11 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             {
                 Console.WriteLine($"Error loading image: {ex.Message}");
             }
+        }
+
+        public void Dispose()
+        {
+            cameraModel?.Dispose();
         }
     }
 
