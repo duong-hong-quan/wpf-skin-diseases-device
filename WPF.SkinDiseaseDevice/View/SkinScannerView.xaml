@@ -10,9 +10,8 @@
     Title="SkinScannerView"
     Width="1080"
     Height="720"
-    mc:Ignorable="d"
     WindowStartupLocation="CenterScreen"
-    >
+    mc:Ignorable="d">
     <Window.Resources>
         <vm:SkinScannerVM x:Key="vm" />
     </Window.Resources>
@@ -32,21 +31,16 @@
 
         </Grid.ColumnDefinitions>
         <!--  Header  -->
-        <StackPanel Grid.Row="0" Grid.Column="1">
-            <Button
-                Width="100"
-                Margin="5"
-                HorizontalAlignment="Right"
-                Background="Black"
-                Content="Login" />
-            <TextBlock
-                Width="150"
-                FontSize="24"
-                FontWeight="Bold"
-                Foreground="Black"
-                Text="Skin Scanner" />
-
-        </StackPanel>
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="1"
+            Width="150"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            FontSize="24"
+            FontWeight="Bold"
+            Foreground="Black"
+            Text="Skin Scanner" />
 
         <!--  Main Content  -->
         <ScrollViewer
@@ -84,21 +78,48 @@
                 Text="Capture Images" />
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Grid.RowSpan="2">
+        <StackPanel Grid.Row="2">
             <TextBlock
                 Margin="10,10,0,10"
                 FontSize="16"
                 FontWeight="Bold"
                 Text="Analysis Results" />
-            <TextBlock FontSize="14" Text="Acne "/>
-
+            <ListView
+                x:Name="predictionsListView"
+                Grid.Column="1"
+                Width="200"
+                VerticalAlignment="Center"
+                ItemsSource="{Binding Predictions}">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn
+                            Width="100"
+                            DisplayMemberBinding="{Binding tagName}"
+                            Header="Tag" />
+                        <GridViewColumn
+                            Width="100"
+                            DisplayMemberBinding="{Binding Path=Probability, StringFormat=P2}"
+                            Header="Probability" />
+                    </GridView>
+                </ListView.View>
+            </ListView>
         </StackPanel>
+        <Button
+            Grid.Row="3"
+            Grid.Column="0"
+            Width="220"
+            Height="50"
+            Background="Black"
+            Command="{Binding DeleteImageCommand}"
+            Content="Delete All Image" />
+
         <Image
             x:Name="webcamImage"
             Grid.Row="1"
             Grid.RowSpan="2"
             Grid.Column="1"
             Source="{Binding ImageSource}" />
+
         <Button
             Grid.Row="3"
             Grid.Column="1"

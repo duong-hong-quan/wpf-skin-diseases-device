@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WPF.SkinDiseaseDevice.Model
+namespace WPF.SkinDiseaseDevice.Utility
 {
     public class ImageUtility
     {
@@ -61,6 +61,35 @@ namespace WPF.SkinDiseaseDevice.Model
             catch (Exception)
             {
                 return false;
+            }
+        }
+       public  void DeleteFilesInFolder(string folderPath)
+        {
+            try
+            {
+                // Check if the folder exists
+                if (Directory.Exists(folderPath))
+                {
+                    // Get all files in the folder
+                    string[] files = Directory.GetFiles(folderPath);
+
+                    // Delete each file
+                    foreach (string file in files)
+                    {
+                        File.Delete(file);
+                        Console.WriteLine($"Deleted file: {file}");
+                    }
+
+                    Console.WriteLine("All files deleted successfully.");
+                }
+                else
+                {
+                    Console.WriteLine("The specified folder does not exist.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
     }

@@ -1,14 +1,18 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using WPF.SkinDiseaseDevice.Model;
+using WPF.SkinDiseaseDevice.Utility;
 using WPF.SkinDiseaseDevice.ViewModel.Command;
 
 namespace WPF.SkinDiseaseDevice.ViewModel
@@ -17,6 +21,8 @@ namespace WPF.SkinDiseaseDevice.ViewModel
     {
         private readonly CameraModel cameraModel;
         public CaptureImageCommand CaptureImageCommand { get; set; }
+        public DeleteAllmageCommand DeleteImageCommand { get; set; }
+
         private readonly ImageUtility imageUtility;
         private CancellationTokenSource cancellationTokenSource;
 
@@ -30,6 +36,16 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                 OnPropertyChanged(nameof(Images));
             }
         }
+        private ObservableCollection<Prediction> _predictions;
+        public ObservableCollection<Prediction> Predictions
+        {
+            get { return _predictions; }
+            set
+            {
+                _predictions = value;
+                OnPropertyChanged(nameof(Predictions));
+            }
+        }
 
         public SkinScannerVM()
         {
@@ -39,6 +55,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             imageUtility = new();
             _images = new ObservableCollection<BitmapImage>();
             CaptureImageCommand = new CaptureImageCommand(this);
+            DeleteImageCommand = new DeleteAllmageCommand(this);
             GetAllImageInFolder();
             cancellationTokenSource = new CancellationTokenSource();
 
@@ -156,6 +173,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                         string savePath = $"{imagesFolderPath}\\{DateTime.Now:yyyyMMddHHmmssfff}.jpg";
                         await SaveImageAsync(imageData, savePath);
                         GetAllImageInFolder();
+                    await    MakePredictionAsync(savePath);
                     }
                     else
                     {
@@ -184,6 +202,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                 using (FileStream fs = new FileStream(filePath, FileMode.Create))
                 {
                     await fs.WriteAsync(imageData, 0, imageData.Length);
+                    fs.Close();
                 }
 
                 Console.WriteLine("Image saved successfully!");
@@ -205,6 +224,13 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             }
         }
 
+        public void DeleteAllImageInFolder()
+        {
+            string imagesFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images");
+            imageUtility.DeleteFilesInFolder(imagesFolderPath);
+            Images = null;
+        }
+
 
 
 
@@ -213,9 +239,13 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             try
             {
                 var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.UriSource = new Uri(imagePath);
-                bitmapImage.EndInit();
+                using (var stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))
+                {
+                    bitmapImage.BeginInit();
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.StreamSource = stream;
+                    bitmapImage.EndInit();
+                }
 
                 Images.Add(bitmapImage);
             }
@@ -228,6 +258,29 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         public void Dispose()
         {
             cameraModel?.Dispose();
+        }
+        private async Task MakePredictionAsync(string fileName)
+        {
+            //IConfigurationRoot config = GetConfig();
+            string url = "https://southeastasia.api.cognitive.microsoft.com/customvision/v3.0/Prediction/7768f87c-1ae0-4aa3-84b0-378c1cfd8989/classify/iterations/Skin%20Condition%20Detection%20Iteration1/image";
+            string key = "a5feedbb88ad44d990b8659383a51506";
+            string contentType = "application/octet-stream";
+            var file = File.ReadAllBytes(fileName);
+
+            using (HttpClient client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Add("Prediction-Key", key);
+                using (var content = new ByteArrayContent(file))
+                {
+                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+                    var response = await client.PostAsync(url, content);
+
+                    var responseString = await response.Content.ReadAsStringAsync();
+
+                    List<Prediction> predictions = (JsonConvert.DeserializeObject<CustomVision>(responseString)).Predictions;
+                    Predictions = new ObservableCollection<Prediction>(predictions);
+                }
+            }
         }
     }
 
