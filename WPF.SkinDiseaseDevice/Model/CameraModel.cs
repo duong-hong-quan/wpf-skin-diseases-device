@@ -33,7 +33,7 @@ namespace WPF.SkinDiseaseDevice.Model
 
                 if (videoDevices.Count > 0)
                 {
-                    videoSource = new VideoCaptureDevice(videoDevices[1].MonikerString);
+                    videoSource = new VideoCaptureDevice(videoDevices[0].MonikerString);
                     videoSource.NewFrame += VideoSource_NewFrame;
                     videoSource.Start();
                 }
