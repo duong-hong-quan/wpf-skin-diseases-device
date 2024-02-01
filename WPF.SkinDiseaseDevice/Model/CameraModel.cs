@@ -140,6 +140,7 @@ namespace WPF.SkinDiseaseDevice.Model
                 return null;
             }
         }
+       
 
         public void Dispose()
         {
