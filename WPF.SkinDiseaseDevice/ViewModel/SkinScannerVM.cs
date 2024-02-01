@@ -228,7 +228,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         {
             string imagesFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images");
             imageUtility.DeleteFilesInFolder(imagesFolderPath);
-            Images = null;
+            Images = new ObservableCollection<BitmapImage>();
         }
 
 
