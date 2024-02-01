@@ -22,6 +22,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         private readonly CameraModel cameraModel;
         public CaptureImageCommand CaptureImageCommand { get; set; }
         public DeleteAllmageCommand DeleteImageCommand { get; set; }
+        public UploadImageCommand UploadImageCommand { get; set; }
 
         private readonly ImageUtility imageUtility;
         private CancellationTokenSource cancellationTokenSource;
@@ -56,6 +57,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             _images = new ObservableCollection<BitmapImage>();
             CaptureImageCommand = new CaptureImageCommand(this);
             DeleteImageCommand = new DeleteAllmageCommand(this);
+            UploadImageCommand = new UploadImageCommand(this);
             GetAllImageInFolder();
             cancellationTokenSource = new CancellationTokenSource();
 
@@ -228,7 +230,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         {
             string imagesFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images");
             imageUtility.DeleteFilesInFolder(imagesFolderPath);
-            Images = new ObservableCollection<BitmapImage>();
+            Images = new();
         }
 
 
@@ -259,12 +261,23 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         {
             cameraModel?.Dispose();
         }
+        public async Task UploadImage()
+        {
+            var openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Image files (*.jpg, *.jpeg, *.png)|*.jpg;*.jpeg;*.png|All files (*.*)|*.*";
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                string imagePath = openFileDialog.FileName;
+                await MakePredictionAsync(imagePath);
+
+            }
+        }
         private async Task MakePredictionAsync(string fileName)
         {
             //IConfigurationRoot config = GetConfig();
-            string url = "https://southeastasia.api.cognitive.microsoft.com/customvision/v3.0/Prediction/7768f87c-1ae0-4aa3-84b0-378c1cfd8989/classify/iterations/Skin%20Condition%20Detection%20Iteration1/image";
-            string key = "a5feedbb88ad44d990b8659383a51506";
-            string contentType = "application/octet-stream";
+            string url = ConfigAI.Url;
+            string key = ConfigAI.ApiKey;
+            string contentType = ConfigAI.ContentType;
             var file = File.ReadAllBytes(fileName);
 
             using (HttpClient client = new HttpClient())
