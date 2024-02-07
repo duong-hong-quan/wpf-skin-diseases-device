@@ -291,9 +291,59 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     var responseString = await response.Content.ReadAsStringAsync();
 
                     List<Prediction> predictions = (JsonConvert.DeserializeObject<CustomVision>(responseString)).Predictions;
+                    RefineResult(predictions);
+                    TranslateSymptomList(predictions);
                     Predictions = new ObservableCollection<Prediction>(predictions);
                 }
             }
+        }
+
+        private void TranslateSymptomList(List<Prediction> predictions)
+        {
+            foreach (Prediction prediction in predictions)
+            {
+                prediction.tagName = TranslateSymptom(prediction.tagName);
+            }
+        }
+
+        private void RefineResult(List<Prediction> predictions)
+        {
+            bool isNormalSkin = true;
+            Prediction containsNormal = null;
+            foreach (Prediction prediction in predictions)
+            {
+                if(!prediction.tagName.Equals("Normal")) {
+                    if (isNormalSkin && prediction.Probability > 0.25) isNormalSkin = false;
+                    if(prediction.Probability <= 0.05) predictions.Remove(prediction);
+                }
+                else
+                {
+                    if(containsNormal == null)
+                        containsNormal = prediction;
+                }
+            }
+
+            if (!isNormalSkin && containsNormal != null)
+                predictions.Remove(containsNormal);
+        }
+
+        private string TranslateSymptom(string predictionName)
+        {
+            if (predictionName.Equals("Acne and Rosacea"))
+                return "Mụn và da ửng đỏ";
+            if (predictionName.Equals("Eczema"))
+                return "Viêm da cơ địa";
+            if (predictionName.Equals("Normal"))
+                return "Bình thường";
+            if (predictionName.Equals("Melanoma Skin Cancer Nevi and Moles"))
+                return "Ung thư da học mô và nốt ruồi";
+            if (predictionName.Equals("Psoriasis Lichen Planus and related diseases"))
+                return "Vẩy nến và Lichen phẳng";
+            if (predictionName.Equals("Tinea Ringworm Candidiasis and other Fungal Infections"))
+                return "Nấm da Candida và các bệnh \n nhiễm trùng nấm khác";
+            if (predictionName.Equals("Vitiligo"))
+                return "Bạch biến";
+            return "Các bệnh khác";
         }
     }
 
