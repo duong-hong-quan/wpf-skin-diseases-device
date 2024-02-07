@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WPF.SkinDiseaseDevice.Model;
 using WPF.SkinDiseaseDevice.Utility;
@@ -51,8 +52,8 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         public SkinScannerVM()
         {
             cameraModel = new CameraModel();
-            cameraModel.FrameCaptured += OnFrameCaptured;
-            StartCamera();
+             cameraModel.FrameCaptured += OnFrameCaptured;
+              StartCamera();
             imageUtility = new();
             _images = new ObservableCollection<BitmapImage>();
             CaptureImageCommand = new CaptureImageCommand(this);
@@ -175,7 +176,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                         string savePath = $"{imagesFolderPath}\\{DateTime.Now:yyyyMMddHHmmssfff}.jpg";
                         await SaveImageAsync(imageData, savePath);
                         GetAllImageInFolder();
-                    await    MakePredictionAsync(savePath);
+                        await MakePredictionAsync(savePath);
                     }
                     else
                     {
@@ -297,34 +298,37 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                 }
             }
         }
-
-        private void TranslateSymptomList(List<Prediction> predictions)
+        private List<Prediction> TranslateSymptomList(List<Prediction> predictions)
         {
             foreach (Prediction prediction in predictions)
             {
                 prediction.tagName = TranslateSymptom(prediction.tagName);
             }
+            return predictions;
         }
-
         private void RefineResult(List<Prediction> predictions)
         {
             bool isNormalSkin = true;
             Prediction containsNormal = null;
-            foreach (Prediction prediction in predictions)
+            foreach (Prediction prediction in predictions.ToList()) 
             {
-                if(!prediction.tagName.Equals("Normal")) {
-                    if (isNormalSkin && prediction.Probability > 0.25) isNormalSkin = false;
-                    if(prediction.Probability <= 0.05) predictions.Remove(prediction);
+                if (!prediction.tagName.Equals("Normal"))
+                {
+                    if (isNormalSkin && prediction.Probability > 0.25)
+                        isNormalSkin = false;
+                    if (prediction.Probability <= 0.05)
+                        predictions.Remove(prediction);
                 }
                 else
                 {
-                    if(containsNormal == null)
+                    if (containsNormal == null)
                         containsNormal = prediction;
                 }
             }
-
             if (!isNormalSkin && containsNormal != null)
+            {
                 predictions.Remove(containsNormal);
+            }
         }
 
         private string TranslateSymptom(string predictionName)
