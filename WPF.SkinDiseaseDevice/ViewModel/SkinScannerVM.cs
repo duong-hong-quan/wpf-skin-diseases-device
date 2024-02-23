@@ -1,3 +1,5 @@
+using Emgu.CV;
+using Emgu.CV.Structure;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -279,6 +281,16 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             string url = ConfigAI.Url;
             string key = ConfigAI.ApiKey;
             string contentType = ConfigAI.ContentType;
+            int numOffaces = await CountFace(fileName);
+            if (numOffaces <= 0)
+            {
+                MessageBox.Show("There is no face in the captured picture");
+                return;
+            } else if(numOffaces > 1)
+            {
+                MessageBox.Show($"There is {numOffaces} faces in the captured picture");
+                return;
+            }
             var file = File.ReadAllBytes(fileName);
 
             using (HttpClient client = new HttpClient())
@@ -297,6 +309,28 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     Predictions = new ObservableCollection<Prediction>(predictions);
                 }
             }
+        }
+
+        private async Task<int> CountFace(string fileName)
+        {
+            try{
+                CascadeClassifier faceCascade = new CascadeClassifier("haarcascades/haarcascade_frontalface_default.xml");
+                // Load your image
+                Image<Bgr, byte> image = new Image<Bgr, byte>(fileName);
+
+                // Convert the image to grayscale
+                Image<Gray, byte> grayImage = image.Convert<Gray, byte>();
+
+                // Detect faces
+                var faces = faceCascade.DetectMultiScale(grayImage, 1.3, 5);
+
+                // Count the number of faces detected
+                int numberOfFaces = faces.Length;
+                return numberOfFaces;
+            } catch(Exception ex) {
+                Console.WriteLine($"Error counting faces in image: {ex.Message}");
+            }
+            return -1;           
         }
         private List<Prediction> TranslateSymptomList(List<Prediction> predictions)
         {
