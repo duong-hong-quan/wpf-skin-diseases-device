@@ -1,3 +1,5 @@
+using Emgu.CV;
+using Emgu.CV.Structure;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -46,6 +48,17 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             {
                 _predictions = value;
                 OnPropertyChanged(nameof(Predictions));
+            }
+        }
+
+        private string _predictedAgeRange;
+        public string PredictedAgeRange
+        {
+            get { return _predictedAgeRange; }
+            set
+            {
+                _predictedAgeRange = value;
+                OnPropertyChanged(nameof(PredictedAgeRange));
             }
         }
 
@@ -176,7 +189,19 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                         string savePath = $"{imagesFolderPath}\\{DateTime.Now:yyyyMMddHHmmssfff}.jpg";
                         await SaveImageAsync(imageData, savePath);
                         GetAllImageInFolder();
-                        await MakePredictionAsync(savePath);
+                        int numOffaces = CountFace(savePath);
+                        if (numOffaces <= 0)
+                        {
+                            MessageBox.Show("There is no face in the captured picture");
+                            return;
+                        }
+                        else if (numOffaces > 1)
+                        {
+                            MessageBox.Show($"There is {numOffaces} faces in the captured picture");
+                            return;
+                        }
+                        await MakeSkinDePredictionAsync(savePath);
+                        await MakeAgePredictionAsync(savePath);
                     }
                     else
                     {
@@ -269,16 +294,28 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 string imagePath = openFileDialog.FileName;
-                await MakePredictionAsync(imagePath);
+                int numOffaces = CountFace(imagePath);
+                if (numOffaces <= 0)
+                {
+                    MessageBox.Show("There is no face in the captured picture");
+                    return;
+                }
+                else if (numOffaces > 1)
+                {
+                    MessageBox.Show($"There is {numOffaces} faces in the captured picture");
+                    return;
+                }
+                await MakeSkinDePredictionAsync(imagePath);
+                await MakeAgePredictionAsync(imagePath);
 
             }
         }
-        private async Task MakePredictionAsync(string fileName)
+        private async Task MakeSkinDePredictionAsync(string fileName)
         {
             //IConfigurationRoot config = GetConfig();
-            string url = ConfigAI.Url;
-            string key = ConfigAI.ApiKey;
-            string contentType = ConfigAI.ContentType;
+            string url = ConfigSkinDeAI.Url;
+            string key = ConfigSkinDeAI.ApiKey;
+            string contentType = ConfigSkinDeAI.ContentType;
             var file = File.ReadAllBytes(fileName);
 
             using (HttpClient client = new HttpClient())
@@ -297,6 +334,52 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     Predictions = new ObservableCollection<Prediction>(predictions);
                 }
             }
+        }
+
+        private async Task MakeAgePredictionAsync(string fileName)
+        {
+            //IConfigurationRoot config = GetConfig();
+            string url = ConfigAgeAI.Url;
+            string key = ConfigAgeAI.ApiKey;
+            string contentType = ConfigAgeAI.ContentType;
+            var file = File.ReadAllBytes(fileName);
+
+            using (HttpClient client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Add("Prediction-Key", key);
+                using (var content = new ByteArrayContent(file))
+                {
+                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+                    var response = await client.PostAsync(url, content);
+
+                    var responseString = await response.Content.ReadAsStringAsync();
+
+                    List<Prediction> predictions = (JsonConvert.DeserializeObject<CustomVision>(responseString)).Predictions;
+                    PredictedAgeRange = GetHighest(predictions);
+                }
+            }
+        }
+
+        private int CountFace(string fileName)
+        {
+            try{
+                CascadeClassifier faceCascade = new CascadeClassifier("haarcascades/haarcascade_frontalface_default.xml");
+                // Load your image
+                Image<Bgr, byte> image = new Image<Bgr, byte>(fileName);
+
+                // Convert the image to grayscale
+                Image<Gray, byte> grayImage = image.Convert<Gray, byte>();
+
+                // Detect faces
+                var faces = faceCascade.DetectMultiScale(grayImage, 1.3, 5);
+
+                // Count the number of faces detected
+                int numberOfFaces = faces.Length;
+                return numberOfFaces;
+            } catch(Exception ex) {
+                Console.WriteLine($"Error counting faces in image: {ex.Message}");
+            }
+            return -1;           
         }
         private List<Prediction> TranslateSymptomList(List<Prediction> predictions)
         {
@@ -329,6 +412,22 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             {
                 predictions.Remove(containsNormal);
             }
+        }
+
+        private string GetHighest(List<Prediction> predictions)
+        {
+            string ageRange = predictions.First().tagName;
+            double highestProbability = predictions.First().Probability;
+            foreach (Prediction prediction in predictions.ToList())
+            {
+                if(prediction.Probability > highestProbability)
+                {
+                    ageRange = prediction.tagName;
+                    highestProbability = prediction.Probability;
+                }
+            }
+            return ageRange;
+           
         }
 
         private string TranslateSymptom(string predictionName)

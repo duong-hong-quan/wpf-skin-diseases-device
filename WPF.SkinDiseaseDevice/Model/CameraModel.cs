@@ -57,6 +57,7 @@ namespace WPF.SkinDiseaseDevice.Model
                 {
                     // Sử dụng camera có chất lượng tốt nhất
                     bestVideoSource.NewFrame += VideoSource_NewFrame;
+                    videoSource = bestVideoSource;
                     bestVideoSource.Start();
                 }
                 else
