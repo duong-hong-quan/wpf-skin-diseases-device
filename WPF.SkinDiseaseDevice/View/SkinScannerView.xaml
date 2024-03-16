@@ -18,11 +18,11 @@
 
     <Grid DataContext="{StaticResource vm}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="74*" />
+            <RowDefinition Height="301*" />
+            <RowDefinition Height="217*" />
 
-            <RowDefinition Height="*" />
+            <RowDefinition Height="112*" />
 
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -32,21 +32,20 @@
         </Grid.ColumnDefinitions>
         <!--  Header  -->
         <TextBlock
-            Grid.Row="0"
             Grid.Column="1"
-            Width="150"
+            Width="220"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            FontSize="24"
+            FontSize="36"
             FontWeight="Bold"
             Foreground="Black"
-            Text="Skin Scanner" />
+            Text="Skin Scanner" Height="42" />
 
         <!--  Main Content  -->
         <ScrollViewer
             Grid.Row="1"
             Grid.Column="0"
-            Margin="10"
+            Margin="10,10,10,10"
             VerticalScrollBarVisibility="Auto">
             <ListView
                 Name="imageListView"
@@ -70,25 +69,22 @@
         </ScrollViewer>
 
         <!--  Analysis Results  -->
-        <StackPanel Grid.Row="0" Grid.RowSpan="2">
+        <StackPanel Grid.Row="0" Grid.RowSpan="2" RenderTransformOrigin="0.506,0.465">
             <TextBlock
-                Margin="10,10,0,10"
+                Margin="10,80,0,10"
                 FontSize="16"
                 FontWeight="Bold"
                 Text="Capture Images" />
         </StackPanel>
 
-        <StackPanel Grid.Row="2">
+        <StackPanel Grid.Row="1" Margin="5,306,0,0" Grid.RowSpan="2">
             <TextBlock
-                Margin="10,10,0,10"
                 FontSize="16"
                 FontWeight="Bold"
                 Text="Analysis Results" />
             <ListView
                 x:Name="predictionsListView"
-                Grid.Column="1"
                 Width="200"
-                VerticalAlignment="Center"
                 ItemsSource="{Binding Predictions}">
                 <ListView.View>
                     <GridView>
@@ -98,13 +94,15 @@
                             Header="Tag" />
                         <GridViewColumn
                             Width="100"
-                            DisplayMemberBinding="{Binding Path=Probability, StringFormat=P2}"
+                            DisplayMemberBinding="{Binding Probability, StringFormat=P2}"
                             Header="Probability" />
                     </GridView>
                 </ListView.View>
             </ListView>
+            <TextBlock FontSize="12"
+                Text="{Binding PredictedAgeRange, StringFormat='Predicted age: {0}'}"/>
         </StackPanel>
-        <Grid Grid.Row="3" Grid.Column="0">
+        <Grid Grid.Row="2" Grid.Column="0" Margin="0,176,0,0" Grid.RowSpan="2">
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -116,39 +114,34 @@
 
             </Grid.ColumnDefinitions>
             <Button
-                Grid.Row="0"
                 Grid.Column="0"
-                Width="220"
                 Height="50"
                 Background="Black"
                 Command="{Binding DeleteImageCommand}"
-                Content="Delete All Image" />
+                Content="Delete All Image" Margin="23,0,194,26" Grid.Row="1" />
 
             <Button
-                Grid.Row="1"
                 Grid.Column="0"
-                Width="220"
                 Height="50"
                 Background="Black"
                  Command="{Binding UploadImageCommand}"
-                Content="Upload Image" />
+                Content="Upload Image" Margin="188,0,29,26" Grid.Row="1" />
 
         </Grid>
 
         <Image
             x:Name="webcamImage"
-            Grid.Row="1"
             Grid.RowSpan="2"
             Grid.Column="1"
-            Source="{Binding ImageSource}" />
+            Source="{Binding ImageSource}" Margin="10,47,10,9" Grid.Row="1" />
 
         <Button
             Grid.Row="3"
             Grid.Column="1"
-            Width="220"
-            Height="50"
             Background="Black"
+            Height="50"
             Command="{Binding CaptureImageCommand}"
-            Content="Capture Image" />
+            Content="Capture Image" Margin="250,31,250,31" />
+
     </Grid>
 </Window>
