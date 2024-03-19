@@ -9,8 +9,7 @@ This project is an application developed using C# with WPF (Windows Presentation
 - **Personalized Recommendations**: Based on the identified skin condition and age, the app provides personalized skincare advice to users, suggesting suitable products or routines.
 
 ## Technologies Used
-- **Language**: C#
-- **Framework**: WPF (Windows Presentation Foundation)
+- **Language**: C#  WPF (Windows Presentation Foundation)
 
 ## Future Enhancements
 - Integration of machine learning models for more accurate skin analysis.
