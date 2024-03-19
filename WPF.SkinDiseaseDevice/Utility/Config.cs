@@ -19,5 +19,10 @@ namespace WPF.SkinDiseaseDevice.Utility
         public static string Url = "https://southeastasia.api.cognitive.microsoft.com/customvision/v3.0/Prediction/d935c757-0eed-42cf-ad83-fed8492f12fa/classify/iterations/AgePrediction/image";
         public static string ContentType = "application/octet-stream";
     }
+    public class ChatGPTAI
+    {
+        public static string SecretKey = "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";
+
+    }
 
 }

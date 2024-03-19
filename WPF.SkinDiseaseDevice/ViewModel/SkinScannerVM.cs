@@ -17,6 +17,8 @@ using System.Windows.Media.Imaging;
 using WPF.SkinDiseaseDevice.Model;
 using WPF.SkinDiseaseDevice.Utility;
 using WPF.SkinDiseaseDevice.ViewModel.Command;
+using static System.Net.WebRequestMethods;
+using File = System.IO.File;
 
 namespace WPF.SkinDiseaseDevice.ViewModel
 {
@@ -65,8 +67,8 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         public SkinScannerVM()
         {
             cameraModel = new CameraModel();
-             cameraModel.FrameCaptured += OnFrameCaptured;
-              StartCamera();
+            cameraModel.FrameCaptured += OnFrameCaptured;
+            StartCamera();
             imageUtility = new();
             _images = new ObservableCollection<BitmapImage>();
             CaptureImageCommand = new CaptureImageCommand(this);
@@ -310,6 +312,43 @@ namespace WPF.SkinDiseaseDevice.ViewModel
 
             }
         }
+
+        public async Task CallOpenAI(List<Prediction> list)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                var apiKey = ChatGPTAI.SecretKey;
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                var listDisease = " ";
+                foreach (var item in list.ToList())
+                {
+                    listDisease += item.tagName;
+                }
+                var message = $"Đóng vai là 1 bác sĩ da liễu hãy đưa ra lời khuyên cho các bệnh sau: {listDisease}. Hãy trả lời bằng tiếng anh";
+                // JSON content for the API call
+                var jsonContent = new
+                {
+                    prompt = message,
+                    model = "gpt-3.5-turbo-instruct",
+                    max_tokens = 1000
+                };
+
+                // Make the API call
+                var responseContent = await client.PostAsync("https://api.openai.com/v1/completions", new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
+
+                // Read the response as a string
+                var resContext = await responseContent.Content.ReadAsStringAsync();
+
+                // Deserialize the response into a dynamic object
+                var data = JsonConvert.DeserializeObject<dynamic>(resContext);
+                if(data !=null)
+                    MessageBox.Show($"{data.choices[0].text}", "Advice for you");
+                await Task.CompletedTask;
+            }
+
+
+        }
+
         private async Task MakeSkinDePredictionAsync(string fileName)
         {
             //IConfigurationRoot config = GetConfig();
@@ -329,9 +368,11 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     var responseString = await response.Content.ReadAsStringAsync();
 
                     List<Prediction> predictions = (JsonConvert.DeserializeObject<CustomVision>(responseString)).Predictions;
+                    await CallOpenAI(predictions.ToList());
                     RefineResult(predictions);
                     TranslateSymptomList(predictions);
                     Predictions = new ObservableCollection<Prediction>(predictions);
+
                 }
             }
         }
@@ -362,7 +403,8 @@ namespace WPF.SkinDiseaseDevice.ViewModel
 
         private int CountFace(string fileName)
         {
-            try{
+            try
+            {
                 CascadeClassifier faceCascade = new CascadeClassifier("haarcascades/haarcascade_frontalface_default.xml");
                 // Load your image
                 Image<Bgr, byte> image = new Image<Bgr, byte>(fileName);
@@ -376,10 +418,12 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                 // Count the number of faces detected
                 int numberOfFaces = faces.Length;
                 return numberOfFaces;
-            } catch(Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Error counting faces in image: {ex.Message}");
             }
-            return -1;           
+            return -1;
         }
         private List<Prediction> TranslateSymptomList(List<Prediction> predictions)
         {
@@ -393,7 +437,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         {
             bool isNormalSkin = true;
             Prediction containsNormal = null;
-            foreach (Prediction prediction in predictions.ToList()) 
+            foreach (Prediction prediction in predictions.ToList())
             {
                 if (!prediction.tagName.Equals("Normal"))
                 {
@@ -420,14 +464,14 @@ namespace WPF.SkinDiseaseDevice.ViewModel
             double highestProbability = predictions.First().Probability;
             foreach (Prediction prediction in predictions.ToList())
             {
-                if(prediction.Probability > highestProbability)
+                if (prediction.Probability > highestProbability)
                 {
                     ageRange = prediction.tagName;
                     highestProbability = prediction.Probability;
                 }
             }
             return ageRange;
-           
+
         }
 
         private string TranslateSymptom(string predictionName)
