@@ -28,6 +28,16 @@ namespace WPF.SkinDiseaseDevice.ViewModel
         public CaptureImageCommand CaptureImageCommand { get; set; }
         public DeleteAllmageCommand DeleteImageCommand { get; set; }
         public UploadImageCommand UploadImageCommand { get; set; }
+        private string _advise;
+        public string Advise
+        {
+            get { return _advise; }
+            set
+            {
+                _advise = value;
+                OnPropertyChanged(nameof(Advise));
+            }
+        }
 
         private readonly ImageUtility imageUtility;
         private CancellationTokenSource cancellationTokenSource;
@@ -202,8 +212,8 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                             MessageBox.Show($"There is {numOffaces} faces in the captured picture");
                             return;
                         }
-                        await MakeSkinDePredictionAsync(savePath);
-                        await MakeAgePredictionAsync(savePath);
+                        string age= await MakeAgePredictionAsync(savePath);
+                        await MakeSkinDePredictionAsync(savePath, age);
                     }
                     else
                     {
@@ -307,13 +317,13 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     MessageBox.Show($"There is {numOffaces} faces in the captured picture");
                     return;
                 }
-                await MakeSkinDePredictionAsync(imagePath);
-                await MakeAgePredictionAsync(imagePath);
+                string age = await MakeAgePredictionAsync(imagePath);
+                await MakeSkinDePredictionAsync(imagePath,age);
 
             }
         }
 
-        public async Task CallOpenAI(List<Prediction> list)
+        public async Task CallOpenAI(List<Prediction> list, string age)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -324,7 +334,7 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                 {
                     listDisease += item.tagName;
                 }
-                var message = $"Đóng vai là 1 bác sĩ da liễu hãy đưa ra lời khuyên cho các bệnh sau: {listDisease}. Hãy trả lời bằng tiếng anh";
+                var message = $"Đóng vai là 1 bác sĩ da liễu hãy đưa ra lời khuyên cho các bệnh sau: {listDisease} and age range is {age}. Hãy trả lời bằng tiếng viet";
                 // JSON content for the API call
                 var jsonContent = new
                 {
@@ -341,15 +351,15 @@ namespace WPF.SkinDiseaseDevice.ViewModel
 
                 // Deserialize the response into a dynamic object
                 var data = JsonConvert.DeserializeObject<dynamic>(resContext);
-                if(data !=null)
-                    MessageBox.Show($"{data.choices[0].text}", "Advice for you");
+                if (data != null)
+                    Advise = data.choices[0].text;
                 await Task.CompletedTask;
             }
 
 
         }
 
-        private async Task MakeSkinDePredictionAsync(string fileName)
+        private async Task MakeSkinDePredictionAsync(string fileName, string age)
         {
             //IConfigurationRoot config = GetConfig();
             string url = ConfigSkinDeAI.Url;
@@ -368,16 +378,16 @@ namespace WPF.SkinDiseaseDevice.ViewModel
                     var responseString = await response.Content.ReadAsStringAsync();
 
                     List<Prediction> predictions = (JsonConvert.DeserializeObject<CustomVision>(responseString)).Predictions;
-                    await CallOpenAI(predictions.ToList());
                     RefineResult(predictions);
                     TranslateSymptomList(predictions);
+                    await CallOpenAI(predictions.ToList(),age);
                     Predictions = new ObservableCollection<Prediction>(predictions);
 
                 }
             }
         }
 
-        private async Task MakeAgePredictionAsync(string fileName)
+        private async Task<string> MakeAgePredictionAsync(string fileName)
         {
             //IConfigurationRoot config = GetConfig();
             string url = ConfigAgeAI.Url;
@@ -397,8 +407,11 @@ namespace WPF.SkinDiseaseDevice.ViewModel
 
                     List<Prediction> predictions = (JsonConvert.DeserializeObject<CustomVision>(responseString)).Predictions;
                     PredictedAgeRange = GetHighest(predictions);
+
                 }
+
             }
+            return PredictedAgeRange;
         }
 
         private int CountFace(string fileName)
