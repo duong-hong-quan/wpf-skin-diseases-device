@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using System.Drawing.Imaging;
 using System.Windows.Media;
+using System.Drawing;
 
 namespace WPF.SkinDiseaseDevice.Model
 {
@@ -81,6 +82,7 @@ namespace WPF.SkinDiseaseDevice.Model
             {
                 using (System.Drawing.Bitmap bitmap = (System.Drawing.Bitmap)eventArgs.Frame.Clone())
                 {
+                    bitmap.RotateFlip(RotateFlipType.RotateNoneFlipX); // For horizontal flip
                     // Use a lock to ensure thread safety when updating currentFrame
                     lock (frameLock)
                     {
