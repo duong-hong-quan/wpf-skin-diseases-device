@@ -2,6 +2,7 @@
 
 ## Overview
 This project is an application developed using C# with WPF (Windows Presentation Foundation). It aims to provide users with insights into their skin condition, leveraging various features such as skin condition recognition and age detection. The application offers tailored recommendations based on the detected skin condition.
+![image](https://github.com/duong-hong-quan/wpf-skin-diseases-device/assets/108501806/d3cc8357-5026-412e-a792-d14c9c2894b3)
 
 ## Features
 - **Skin Condition Recognition**: The app utilizes advanced algorithms to analyze the user's skin condition, identifying issues such as dryness, oiliness, acne, etc.
